@@ -1,9 +1,9 @@
 name: Ping Render Server
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "*/12 * * * *" # every 12 minutes
+    - cron: "*/12 * * * *"
+  workflow_dispatch:
 
 jobs:
   ping:
