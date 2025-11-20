@@ -18,16 +18,17 @@ import { QuizService } from './quiz.service';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('quizzes')
 @Controller('quizzes')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class QuizController {
   constructor(private readonly quizService: QuizService) {}
 
   @Post('generate')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Generate a new quiz using AI' })
   @ApiResponse({ status: 201, description: 'Quiz generated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -39,6 +40,8 @@ export class QuizController {
   }
 
   @Get('my-quizzes')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all quizzes created by current user' })
   @ApiResponse({ status: 200, description: 'Quizzes retrieved successfully' })
   async getMyQuizzes(@CurrentUser('userId') userId: string) {
@@ -56,18 +59,23 @@ export class QuizController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a specific quiz by ID' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({
+    summary: 'Get a specific quiz by ID (public if quiz is public)',
+  })
   @ApiResponse({ status: 200, description: 'Quiz retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Quiz not found' })
   @ApiResponse({ status: 403, description: 'Access denied' })
   async getQuizById(
     @Param('id') quizId: string,
-    @CurrentUser('userId') userId: string,
+    @CurrentUser('userId') userId?: string,
   ) {
     return this.quizService.getQuizById(quizId, userId);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a quiz' })
   @ApiResponse({ status: 200, description: 'Quiz updated successfully' })
   @ApiResponse({ status: 404, description: 'Quiz not found' })
@@ -81,6 +89,8 @@ export class QuizController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a quiz' })
   @ApiResponse({ status: 200, description: 'Quiz deleted successfully' })
   @ApiResponse({ status: 404, description: 'Quiz not found' })
@@ -94,6 +104,8 @@ export class QuizController {
   }
 
   @Patch(':id/visibility')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Toggle quiz visibility (public/private)' })
   @ApiResponse({
     status: 200,

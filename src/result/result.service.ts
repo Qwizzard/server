@@ -23,7 +23,7 @@ export class ResultService {
 
   async getResultById(
     resultSlug: string,
-    userId: string,
+    userId?: string,
   ): Promise<{
     _id: unknown;
     slug: string;
@@ -36,6 +36,7 @@ export class ResultService {
     totalQuestions: unknown;
     percentage: unknown;
     completedAt: unknown;
+    isResultPublic: boolean;
     answers: Array<{
       questionIndex: number;
       questionText: string;
@@ -59,9 +60,17 @@ export class ResultService {
       throw new NotFoundException('Result not found');
     }
 
-    // Verify user owns the result
-    if (result.userId.toString() !== userId) {
-      throw new ForbiddenException('You do not have access to this result');
+    // Check access: either user owns it, or result is public
+    if (!userId) {
+      // Not logged in - can only view if result is public
+      if (!result.isResultPublic) {
+        throw new ForbiddenException('You do not have access to this result');
+      }
+    } else {
+      // Logged in - can view if owned or public
+      if (result.userId.toString() !== userId && !result.isResultPublic) {
+        throw new ForbiddenException('You do not have access to this result');
+      }
     }
 
     // Include question details in the response
@@ -102,6 +111,7 @@ export class ResultService {
       totalQuestions: result.totalQuestions,
       percentage: result.percentage,
       completedAt: result.completedAt,
+      isResultPublic: result.isResultPublic,
       answers: detailedAnswers,
     };
   }
@@ -123,5 +133,28 @@ export class ResultService {
       .find({ quizId: quiz._id, userId })
       .sort({ completedAt: -1 })
       .exec();
+  }
+
+  async toggleResultVisibility(
+    resultSlug: string,
+    userId: string,
+  ): Promise<QuizResult> {
+    const result = await this.resultModel.findOne({ slug: resultSlug }).exec();
+
+    if (!result) {
+      throw new NotFoundException('Result not found');
+    }
+
+    // Verify user owns the result
+    if (result.userId.toString() !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to modify this result',
+      );
+    }
+
+    result.isResultPublic = !result.isResultPublic;
+    await result.save();
+
+    return result;
   }
 }

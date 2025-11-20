@@ -43,6 +43,9 @@ export class QuizResult extends Document {
 
   @Prop({ required: true, default: Date.now })
   completedAt: Date;
+
+  @Prop({ required: true, default: true })
+  isResultPublic: boolean;
 }
 
 export const QuizResultSchema = SchemaFactory.createForClass(QuizResult);

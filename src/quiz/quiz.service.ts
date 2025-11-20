@@ -58,7 +58,7 @@ export class QuizService {
       .exec();
   }
 
-  async getQuizById(quizSlug: string, userId: string): Promise<Quiz> {
+  async getQuizById(quizSlug: string, userId?: string): Promise<Quiz> {
     const quiz = await this.quizModel
       .findOne({ slug: quizSlug })
       .populate('creatorId', 'username email')
@@ -68,9 +68,17 @@ export class QuizService {
       throw new NotFoundException('Quiz not found');
     }
 
-    // Check if user has access (either creator or quiz is public)
-    if (quiz.creatorId._id.toString() !== userId && !quiz.isPublic) {
-      throw new ForbiddenException('You do not have access to this quiz');
+    // Check if user has access
+    // If no userId (not logged in), only allow access to public quizzes
+    if (!userId) {
+      if (!quiz.isPublic) {
+        throw new ForbiddenException('You do not have access to this quiz');
+      }
+    } else {
+      // If user is logged in, check if they're creator or quiz is public
+      if (quiz.creatorId._id.toString() !== userId && !quiz.isPublic) {
+        throw new ForbiddenException('You do not have access to this quiz');
+      }
     }
 
     return quiz;
