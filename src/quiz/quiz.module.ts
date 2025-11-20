@@ -15,4 +15,3 @@ import { OpenAIModule } from '../openai/openai.module';
   exports: [QuizService],
 })
 export class QuizModule {}
-

@@ -1,5 +1,18 @@
-import { Controller, Post, Get, Delete, Body, Param, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { AttemptService } from './attempt.service';
 import { StartAttemptDto } from './dto/start-attempt.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
@@ -32,6 +45,17 @@ export class AttemptController {
     return this.attemptService.getMyAttempts(userId);
   }
 
+  @Get('quiz/:quizId/status')
+  @ApiOperation({ summary: 'Get attempt status for a specific quiz' })
+  @ApiResponse({ status: 200, description: 'Status retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Quiz not found' })
+  async getQuizAttemptStatus(
+    @Param('quizId') quizId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.attemptService.getQuizAttemptStatus(userId, quizId);
+  }
+
   @Get(':attemptId')
   @ApiOperation({ summary: 'Get a specific attempt by ID' })
   @ApiResponse({ status: 200, description: 'Attempt retrieved successfully' })
@@ -59,7 +83,10 @@ export class AttemptController {
 
   @Post(':attemptId/submit')
   @ApiOperation({ summary: 'Submit completed attempt for grading' })
-  @ApiResponse({ status: 201, description: 'Attempt submitted and graded successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Attempt submitted and graded successfully',
+  })
   @ApiResponse({ status: 404, description: 'Attempt not found' })
   @ApiResponse({ status: 400, description: 'Attempt already completed' })
   async submitAttempt(
@@ -81,4 +108,3 @@ export class AttemptController {
     return { message: 'Attempt abandoned successfully' };
   }
 }
-

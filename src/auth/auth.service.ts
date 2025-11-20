@@ -63,7 +63,10 @@ export class AuthService {
     };
   }
 
-  async validateUser(email: string, password: string): Promise<any> {
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<Record<string, unknown> | null> {
     const user = await this.userService.findByEmail(email);
 
     if (!user) {
@@ -76,7 +79,11 @@ export class AuthService {
     );
 
     if (isPasswordValid) {
-      const { password, ...result } = user.toObject();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...result } = user.toObject() as Record<
+        string,
+        unknown
+      > & { password: string };
       return result;
     }
 

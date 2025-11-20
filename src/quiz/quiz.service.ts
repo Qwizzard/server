@@ -9,6 +9,7 @@ import { Quiz } from '../schemas/quiz.schema';
 import { OpenAIService } from '../openai/openai.service';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
+import { generateQuizSlug } from '../utils/slug.utils';
 
 @Injectable()
 export class QuizService {
@@ -24,8 +25,12 @@ export class QuizService {
     // Generate questions using OpenAI
     const questions = await this.openAIService.generateQuiz(generateQuizDto);
 
+    // Generate unique slug
+    const slug = generateQuizSlug(generateQuizDto.topic);
+
     // Create quiz
     const quiz = new this.quizModel({
+      slug,
       creatorId: userId,
       topic: generateQuizDto.topic,
       difficulty: generateQuizDto.difficulty,
@@ -53,9 +58,9 @@ export class QuizService {
       .exec();
   }
 
-  async getQuizById(quizId: string, userId: string): Promise<Quiz> {
+  async getQuizById(quizSlug: string, userId: string): Promise<Quiz> {
     const quiz = await this.quizModel
-      .findById(quizId)
+      .findOne({ slug: quizSlug })
       .populate('creatorId', 'username email')
       .exec();
 
@@ -72,11 +77,11 @@ export class QuizService {
   }
 
   async updateQuiz(
-    quizId: string,
+    quizSlug: string,
     userId: string,
     updateQuizDto: UpdateQuizDto,
   ): Promise<Quiz> {
-    const quiz = await this.quizModel.findById(quizId).exec();
+    const quiz = await this.quizModel.findOne({ slug: quizSlug }).exec();
 
     if (!quiz) {
       throw new NotFoundException('Quiz not found');
@@ -95,8 +100,8 @@ export class QuizService {
     return quiz.save();
   }
 
-  async deleteQuiz(quizId: string, userId: string): Promise<void> {
-    const quiz = await this.quizModel.findById(quizId).exec();
+  async deleteQuiz(quizSlug: string, userId: string): Promise<void> {
+    const quiz = await this.quizModel.findOne({ slug: quizSlug }).exec();
 
     if (!quiz) {
       throw new NotFoundException('Quiz not found');
@@ -107,11 +112,11 @@ export class QuizService {
       throw new ForbiddenException('You can only delete your own quizzes');
     }
 
-    await this.quizModel.findByIdAndDelete(quizId).exec();
+    await this.quizModel.deleteOne({ slug: quizSlug }).exec();
   }
 
-  async toggleVisibility(quizId: string, userId: string): Promise<Quiz> {
-    const quiz = await this.quizModel.findById(quizId).exec();
+  async toggleVisibility(quizSlug: string, userId: string): Promise<Quiz> {
+    const quiz = await this.quizModel.findOne({ slug: quizSlug }).exec();
 
     if (!quiz) {
       throw new NotFoundException('Quiz not found');

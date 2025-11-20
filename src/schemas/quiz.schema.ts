@@ -20,6 +20,9 @@ export class Question {
 
 @Schema({ timestamps: true })
 export class Quiz extends Document {
+  @Prop({ required: true, unique: true, trim: true })
+  slug: string;
+
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
   creatorId: Types.ObjectId;
 
@@ -49,6 +52,7 @@ export class Quiz extends Document {
 export const QuizSchema = SchemaFactory.createForClass(Quiz);
 
 // Create indexes
+QuizSchema.index({ slug: 1 }, { unique: true });
 QuizSchema.index({ creatorId: 1 });
 QuizSchema.index({ isPublic: 1 });
 QuizSchema.index({ createdAt: -1 });

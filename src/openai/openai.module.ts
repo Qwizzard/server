@@ -6,4 +6,3 @@ import { OpenAIService } from './openai.service';
   exports: [OpenAIService],
 })
 export class OpenAIModule {}
-

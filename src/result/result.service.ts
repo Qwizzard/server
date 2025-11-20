@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { QuizResult } from '../schemas/quiz-result.schema';
@@ -17,9 +21,34 @@ export class ResultService {
       .exec();
   }
 
-  async getResultById(resultId: string, userId: string): Promise<any> {
+  async getResultById(
+    resultSlug: string,
+    userId: string,
+  ): Promise<{
+    _id: unknown;
+    slug: string;
+    userId: unknown;
+    quizId: unknown;
+    quizTopic: string;
+    quizDifficulty: string;
+    attemptId: unknown;
+    score: unknown;
+    totalQuestions: unknown;
+    percentage: unknown;
+    completedAt: unknown;
+    answers: Array<{
+      questionIndex: number;
+      questionText: string;
+      questionType: string;
+      options: string[];
+      selectedAnswers: number[];
+      correctAnswers: number[];
+      isCorrect: boolean;
+      explanation: string;
+    }>;
+  }> {
     const result = await this.resultModel
-      .findById(resultId)
+      .findOne({ slug: resultSlug })
       .populate({
         path: 'quizId',
         select: 'topic difficulty numberOfQuestions questions',
@@ -36,7 +65,17 @@ export class ResultService {
     }
 
     // Include question details in the response
-    const quiz: any = result.quizId;
+    const quiz = result.quizId as unknown as {
+      _id: unknown;
+      topic: string;
+      difficulty: string;
+      questions: Array<{
+        questionText: string;
+        questionType: string;
+        options: string[];
+        explanation: string;
+      }>;
+    };
     const detailedAnswers = result.answers.map((answer) => {
       const question = quiz.questions[answer.questionIndex];
       return {
@@ -53,8 +92,9 @@ export class ResultService {
 
     return {
       _id: result._id,
+      slug: result.slug,
       userId: result.userId,
-      quizId: result.quizId._id,
+      quizId: quiz._id,
       quizTopic: quiz.topic,
       quizDifficulty: quiz.difficulty,
       attemptId: result.attemptId,
@@ -66,11 +106,22 @@ export class ResultService {
     };
   }
 
-  async getResultsByQuizId(quizId: string, userId: string): Promise<QuizResult[]> {
+  async getResultsByQuizId(
+    quizSlug: string,
+    userId: string,
+  ): Promise<QuizResult[]> {
+    // First find the quiz by slug to get its ObjectId
+    const quiz = await this.resultModel.db
+      .collection('quizzes')
+      .findOne({ slug: quizSlug });
+
+    if (!quiz) {
+      throw new NotFoundException('Quiz not found');
+    }
+
     return this.resultModel
-      .find({ quizId, userId })
+      .find({ quizId: quiz._id, userId })
       .sort({ completedAt: -1 })
       .exec();
   }
 }
-

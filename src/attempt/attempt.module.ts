@@ -19,4 +19,3 @@ import { Quiz, QuizSchema } from '../schemas/quiz.schema';
   exports: [AttemptService],
 })
 export class AttemptModule {}
-

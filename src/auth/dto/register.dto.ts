@@ -15,4 +15,3 @@ export class RegisterDto {
   @MinLength(3)
   username: string;
 }
-

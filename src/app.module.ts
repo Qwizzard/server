@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { OpenAIModule } from './openai/openai.module';
 import { QuizModule } from './quiz/quiz.module';
@@ -19,7 +18,7 @@ import configuration from './config/configuration';
     }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         uri: configService.get<string>('database.uri'),
       }),
     }),
@@ -30,6 +29,5 @@ import configuration from './config/configuration';
     ResultModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

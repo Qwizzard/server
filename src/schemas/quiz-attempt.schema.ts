@@ -14,6 +14,9 @@ export class Answer {
 
 @Schema({ timestamps: true })
 export class QuizAttempt extends Document {
+  @Prop({ required: true, unique: true, trim: true })
+  slug: string;
+
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
   userId: Types.ObjectId;
 
@@ -46,6 +49,7 @@ export class QuizAttempt extends Document {
 export const QuizAttemptSchema = SchemaFactory.createForClass(QuizAttempt);
 
 // Create indexes
+QuizAttemptSchema.index({ slug: 1 }, { unique: true });
 QuizAttemptSchema.index({ userId: 1, quizId: 1 });
 QuizAttemptSchema.index({ status: 1 });
 QuizAttemptSchema.index({ startedAt: -1 });

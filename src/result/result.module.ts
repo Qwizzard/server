@@ -15,4 +15,3 @@ import { QuizResult, QuizResultSchema } from '../schemas/quiz-result.schema';
   exports: [ResultService],
 })
 export class ResultModule {}
-

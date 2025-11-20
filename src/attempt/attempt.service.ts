@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { QuizAttempt } from '../schemas/quiz-attempt.schema';
@@ -6,6 +11,7 @@ import { QuizResult } from '../schemas/quiz-result.schema';
 import { Quiz } from '../schemas/quiz.schema';
 import { StartAttemptDto } from './dto/start-attempt.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
+import { generateAttemptId, generateResultId } from '../utils/slug.utils';
 
 @Injectable()
 export class AttemptService {
@@ -15,11 +21,14 @@ export class AttemptService {
     @InjectModel(Quiz.name) private quizModel: Model<Quiz>,
   ) {}
 
-  async startAttempt(userId: string, startAttemptDto: StartAttemptDto): Promise<QuizAttempt> {
+  async startAttempt(
+    userId: string,
+    startAttemptDto: StartAttemptDto,
+  ): Promise<QuizAttempt> {
     const { quizId } = startAttemptDto;
 
-    // Verify quiz exists and user has access
-    const quiz = await this.quizModel.findById(quizId).exec();
+    // Verify quiz exists and user has access (quizId is now a slug)
+    const quiz = await this.quizModel.findOne({ slug: quizId }).exec();
     if (!quiz) {
       throw new NotFoundException('Quiz not found');
     }
@@ -29,10 +38,24 @@ export class AttemptService {
       throw new ForbiddenException('You do not have access to this quiz');
     }
 
+    // Check for existing in-progress attempt (using quiz._id for internal reference)
+    const existingAttempt = await this.attemptModel
+      .findOne({ userId, quizId: quiz._id, status: 'in-progress' })
+      .exec();
+
+    if (existingAttempt) {
+      // Return existing in-progress attempt instead of creating a new one
+      return existingAttempt;
+    }
+
+    // Generate unique slug for attempt
+    const slug = generateAttemptId();
+
     // Create new attempt
     const attempt = new this.attemptModel({
+      slug,
       userId,
-      quizId,
+      quizId: quiz._id,
       answers: [],
       status: 'in-progress',
       startedAt: new Date(),
@@ -50,9 +73,58 @@ export class AttemptService {
       .exec();
   }
 
-  async getAttemptById(attemptId: string, userId: string): Promise<QuizAttempt> {
+  async getQuizAttemptStatus(
+    userId: string,
+    quizSlug: string,
+  ): Promise<{
+    status: 'not-started' | 'in-progress' | 'completed';
+    attemptId?: string;
+    lastQuestionIndex?: number;
+  }> {
+    // Find quiz by slug first
+    const quiz = await this.quizModel.findOne({ slug: quizSlug }).exec();
+    if (!quiz) {
+      throw new NotFoundException('Quiz not found');
+    }
+
+    // Find the most recent attempt for this quiz
     const attempt = await this.attemptModel
-      .findById(attemptId)
+      .findOne({ userId, quizId: quiz._id })
+      .sort({ startedAt: -1 })
+      .exec();
+
+    if (!attempt) {
+      return { status: 'not-started' };
+    }
+
+    if (attempt.status === 'in-progress') {
+      // Find the last answered question
+      const lastQuestionIndex =
+        attempt.answers.length > 0
+          ? Math.max(...attempt.answers.map((a) => a.questionIndex))
+          : -1;
+
+      return {
+        status: 'in-progress',
+        attemptId: attempt.slug,
+        lastQuestionIndex,
+      };
+    }
+
+    if (attempt.status === 'completed') {
+      return { status: 'completed' };
+    }
+
+    // If abandoned, treat as not started
+    return { status: 'not-started' };
+  }
+
+  async getAttemptById(
+    attemptSlug: string,
+    userId: string,
+  ): Promise<QuizAttempt> {
+    const attempt = await this.attemptModel
+      .findOne({ slug: attemptSlug })
       .populate('quizId')
       .exec();
 
@@ -69,11 +141,13 @@ export class AttemptService {
   }
 
   async submitAnswer(
-    attemptId: string,
+    attemptSlug: string,
     userId: string,
     submitAnswerDto: SubmitAnswerDto,
   ): Promise<QuizAttempt> {
-    const attempt = await this.attemptModel.findById(attemptId).exec();
+    const attempt = await this.attemptModel
+      .findOne({ slug: attemptSlug })
+      .exec();
 
     if (!attempt) {
       throw new NotFoundException('Attempt not found');
@@ -86,7 +160,9 @@ export class AttemptService {
 
     // Check if attempt is still in progress
     if (attempt.status !== 'in-progress') {
-      throw new BadRequestException('This attempt has already been completed or abandoned');
+      throw new BadRequestException(
+        'This attempt has already been completed or abandoned',
+      );
     }
 
     // Verify quiz and question index
@@ -106,7 +182,8 @@ export class AttemptService {
 
     if (existingAnswerIndex >= 0) {
       // Update existing answer
-      attempt.answers[existingAnswerIndex].selectedAnswers = submitAnswerDto.selectedAnswers;
+      attempt.answers[existingAnswerIndex].selectedAnswers =
+        submitAnswerDto.selectedAnswers;
       attempt.answers[existingAnswerIndex].answeredAt = new Date();
     } else {
       // Add new answer
@@ -121,9 +198,12 @@ export class AttemptService {
     return attempt.save();
   }
 
-  async submitAttempt(attemptId: string, userId: string): Promise<QuizResult> {
+  async submitAttempt(
+    attemptSlug: string,
+    userId: string,
+  ): Promise<QuizResult> {
     const attempt = await this.attemptModel
-      .findById(attemptId)
+      .findOne({ slug: attemptSlug })
       .populate('quizId')
       .exec();
 
@@ -138,7 +218,9 @@ export class AttemptService {
 
     // Check if attempt is still in progress
     if (attempt.status !== 'in-progress') {
-      throw new BadRequestException('This attempt has already been completed or abandoned');
+      throw new BadRequestException(
+        'This attempt has already been completed or abandoned',
+      );
     }
 
     // Get quiz
@@ -150,8 +232,12 @@ export class AttemptService {
     // Calculate score
     const { score, answers } = this.calculateScore(quiz, attempt);
 
+    // Generate unique result slug
+    const resultSlug = generateResultId(quiz.topic);
+
     // Create result
     const result = new this.resultModel({
+      slug: resultSlug,
       userId: attempt.userId,
       quizId: attempt.quizId,
       attemptId: attempt._id,
@@ -170,8 +256,10 @@ export class AttemptService {
     return result.save();
   }
 
-  async abandonAttempt(attemptId: string, userId: string): Promise<void> {
-    const attempt = await this.attemptModel.findById(attemptId).exec();
+  async abandonAttempt(attemptSlug: string, userId: string): Promise<void> {
+    const attempt = await this.attemptModel
+      .findOne({ slug: attemptSlug })
+      .exec();
 
     if (!attempt) {
       throw new NotFoundException('Attempt not found');
@@ -220,7 +308,9 @@ export class AttemptService {
 
         isCorrect =
           correctAnswers.length === sortedSelectedAnswers.length &&
-          correctAnswers.every((val, idx) => val === sortedSelectedAnswers[idx]);
+          correctAnswers.every(
+            (val, idx) => val === sortedSelectedAnswers[idx],
+          );
 
         if (isCorrect) {
           score++;
@@ -238,4 +328,3 @@ export class AttemptService {
     return { score, answers };
   }
 }
-

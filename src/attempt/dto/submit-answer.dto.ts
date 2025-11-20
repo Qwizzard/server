@@ -7,10 +7,13 @@ export class SubmitAnswerDto {
   @Min(0)
   questionIndex: number;
 
-  @ApiProperty({ description: 'Selected answer indices', type: [Number], example: [0, 2] })
+  @ApiProperty({
+    description: 'Selected answer indices',
+    type: [Number],
+    example: [0, 2],
+  })
   @IsArray()
   @ArrayNotEmpty()
   @IsInt({ each: true })
   selectedAnswers: number[];
 }
-
