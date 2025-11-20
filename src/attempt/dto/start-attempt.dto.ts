@@ -1,13 +1,12 @@
-import { IsString, IsNotEmpty, IsMongoId } from 'class-validator';
+import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class StartAttemptDto {
   @ApiProperty({
-    description: 'Quiz ID to attempt',
-    example: '507f1f77bcf86cd799439011',
+    description: 'Quiz slug to attempt',
+    example: 'javascript-basics-abc123',
   })
   @IsString()
   @IsNotEmpty()
-  @IsMongoId()
   quizId: string;
 }
