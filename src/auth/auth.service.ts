@@ -38,6 +38,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Check if user has a password (local auth)
+    if (!user.password) {
+      throw new UnauthorizedException(
+        'This account uses Google Sign-In. Please login with Google.',
+      );
+    }
+
     const isPasswordValid = await this.userService.validatePassword(
       loginDto.password,
       user.password,
@@ -73,6 +80,11 @@ export class AuthService {
       return null;
     }
 
+    // Check if user has a password
+    if (!user.password) {
+      return null;
+    }
+
     const isPasswordValid = await this.userService.validatePassword(
       password,
       user.password,
@@ -101,6 +113,23 @@ export class AuthService {
       id: user._id,
       email: user.email,
       username: user.username,
+    };
+  }
+
+  async googleLogin(user: any) {
+    const payload: JwtPayload = {
+      sub: user._id.toString(),
+      email: user.email,
+      username: user.username,
+    };
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+      },
     };
   }
 }

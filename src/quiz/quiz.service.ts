@@ -76,8 +76,24 @@ export class QuizService {
       }
     } else {
       // If user is logged in, check if they're creator or quiz is public
-      if (quiz.creatorId._id.toString() !== userId && !quiz.isPublic) {
-        throw new ForbiddenException('You do not have access to this quiz');
+      // Handle case where creatorId might be null (deleted user)
+      if (!quiz.creatorId) {
+        // If creator doesn't exist and quiz is not public, deny access
+        if (!quiz.isPublic) {
+          throw new ForbiddenException('You do not have access to this quiz');
+        }
+      } else {
+        // Use type assertion to handle populated vs non-populated creatorId
+        let creatorIdStr: string;
+        if (typeof quiz.creatorId === 'object' && quiz.creatorId !== null && '_id' in quiz.creatorId) {
+          creatorIdStr = (quiz.creatorId as any)._id.toString();
+        } else {
+          creatorIdStr = (quiz.creatorId as any).toString();
+        }
+        
+        if (creatorIdStr !== userId && !quiz.isPublic) {
+          throw new ForbiddenException('You do not have access to this quiz');
+        }
       }
     }
 

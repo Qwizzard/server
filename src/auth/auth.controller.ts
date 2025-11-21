@@ -1,10 +1,21 @@
-import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Req,
+  Res,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -14,7 +25,10 @@ import { CurrentUser } from './decorators/current-user.decorator';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
@@ -40,5 +54,35 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getProfile(@CurrentUser('userId') userId: string) {
     return this.authService.getProfile(userId);
+  }
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Initiate Google OAuth login' })
+  @ApiResponse({ status: 302, description: 'Redirect to Google' })
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async googleAuth(@Req() req: any) {
+    // Guard redirects to Google
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Google OAuth callback' })
+  @ApiResponse({ status: 302, description: 'Redirect to frontend with token' })
+  async googleAuthRedirect(@Req() req: any, @Res() res: Response) {
+    try {
+      const result = await this.authService.googleLogin(req.user);
+      const frontendUrl = this.configService.get<string>('frontend.url');
+
+      // Redirect to frontend with token and user data
+      const redirectUrl = `${frontendUrl}/auth/callback?token=${result.access_token}&user=${encodeURIComponent(JSON.stringify(result.user))}`;
+      res.redirect(redirectUrl);
+    } catch (error) {
+      const frontendUrl = this.configService.get<string>('frontend.url');
+      const errorMessage = encodeURIComponent(
+        error.message || 'Authentication failed',
+      );
+      res.redirect(`${frontendUrl}/login?error=${errorMessage}`);
+    }
   }
 }

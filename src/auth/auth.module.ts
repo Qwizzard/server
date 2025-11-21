@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { UserService } from './user.service';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { User, UserSchema } from '../schemas/user.schema';
 
 @Module({
@@ -31,7 +32,13 @@ import { User, UserSchema } from '../schemas/user.schema';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UserService, LocalStrategy, JwtStrategy],
+  providers: [
+    AuthService,
+    UserService,
+    LocalStrategy,
+    JwtStrategy,
+    GoogleStrategy,
+  ],
   exports: [AuthService, UserService],
 })
 export class AuthModule {}

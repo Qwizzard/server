@@ -2,8 +2,14 @@ import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { User } from '../schemas/user.schema';
+import { User, AuthProvider } from '../schemas/user.schema';
 import { RegisterDto } from './dto/register.dto';
+
+interface GoogleUserData {
+  googleId: string;
+  email: string;
+  username: string;
+}
 
 @Injectable()
 export class UserService {
@@ -26,6 +32,7 @@ export class UserService {
       email,
       password: hashedPassword,
       username,
+      authProvider: AuthProvider.LOCAL,
     });
 
     return user.save();
@@ -37,6 +44,40 @@ export class UserService {
 
   async findById(id: string): Promise<User | null> {
     return this.userModel.findById(id).exec();
+  }
+
+  async findByGoogleId(googleId: string): Promise<User | null> {
+    return this.userModel.findOne({ googleId }).exec();
+  }
+
+  async findOrCreateGoogleUser(userData: GoogleUserData): Promise<User> {
+    const { googleId, email, username } = userData;
+
+    // First, check if user exists with this googleId
+    let user = await this.findByGoogleId(googleId);
+    if (user) {
+      return user;
+    }
+
+    // Check if user exists with this email (account linking scenario)
+    user = await this.findByEmail(email);
+    if (user) {
+      // Link Google account to existing user
+      user.googleId = googleId;
+      user.authProvider = AuthProvider.GOOGLE;
+      return user.save();
+    }
+
+    // Create new Google user
+    const newUser = new this.userModel({
+      email,
+      username,
+      googleId,
+      authProvider: AuthProvider.GOOGLE,
+      // No password for Google users
+    });
+
+    return newUser.save();
   }
 
   async validatePassword(
