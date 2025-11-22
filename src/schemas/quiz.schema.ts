@@ -51,8 +51,7 @@ export class Quiz extends Document {
 
 export const QuizSchema = SchemaFactory.createForClass(Quiz);
 
-// Create indexes
-QuizSchema.index({ slug: 1 }, { unique: true });
+// Create indexes (not already defined in @Prop decorators)
 QuizSchema.index({ creatorId: 1 });
 QuizSchema.index({ isPublic: 1 });
 QuizSchema.index({ createdAt: -1 });

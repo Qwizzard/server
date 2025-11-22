@@ -15,12 +15,16 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-import type { Response } from 'express';
-import { AuthService } from './auth.service';
+import type { Response, Request } from 'express';
+import { AuthService, GoogleUser } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+
+interface RequestWithUser extends Request {
+  user: GoogleUser;
+}
 
 @ApiTags('auth')
 @Controller('auth')
@@ -61,7 +65,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Initiate Google OAuth login' })
   @ApiResponse({ status: 302, description: 'Redirect to Google' })
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async googleAuth(@Req() req: any) {
+  async googleAuth(@Req() _req: Request) {
     // Guard redirects to Google
   }
 
@@ -69,9 +73,10 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Google OAuth callback' })
   @ApiResponse({ status: 302, description: 'Redirect to frontend with token' })
-  async googleAuthRedirect(@Req() req: any, @Res() res: Response) {
+  googleAuthRedirect(@Req() req: RequestWithUser, @Res() res: Response): void {
     try {
-      const result = await this.authService.googleLogin(req.user);
+      const user: GoogleUser = req.user;
+      const result = this.authService.googleLogin(user);
       const frontendUrl = this.configService.get<string>('frontend.url');
 
       // Redirect to frontend with token and user data
@@ -80,7 +85,7 @@ export class AuthController {
     } catch (error) {
       const frontendUrl = this.configService.get<string>('frontend.url');
       const errorMessage = encodeURIComponent(
-        error.message || 'Authentication failed',
+        error instanceof Error ? error.message : 'Authentication failed',
       );
       res.redirect(`${frontendUrl}/login?error=${errorMessage}`);
     }

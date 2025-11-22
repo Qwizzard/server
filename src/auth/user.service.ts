@@ -86,4 +86,19 @@ export class UserService {
   ): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
+
+  /**
+   * STRICT: Delete user with cascade deletion of all related data
+   * Cascade deletion is handled automatically by pre-delete hooks in user.schema.ts
+   * This ensures no orphaned quizzes, attempts, or results remain
+   */
+  async deleteUser(userId: string): Promise<void> {
+    const result = await this.userModel.findByIdAndDelete(userId).exec();
+
+    if (!result) {
+      throw new ConflictException('User not found');
+    }
+
+    // Cascade deletion of quizzes, attempts, and results is handled by schema hooks
+  }
 }

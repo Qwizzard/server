@@ -5,6 +5,12 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
+export interface GoogleUser {
+  _id: { toString: () => string };
+  email: string;
+  username: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -116,7 +122,10 @@ export class AuthService {
     };
   }
 
-  async googleLogin(user: any) {
+  googleLogin(user: GoogleUser): {
+    access_token: string;
+    user: { id: string; email: string; username: string };
+  } {
     const payload: JwtPayload = {
       sub: user._id.toString(),
       email: user.email,
@@ -126,7 +135,7 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload),
       user: {
-        id: user._id,
+        id: user._id.toString(),
         email: user.email,
         username: user.username,
       },

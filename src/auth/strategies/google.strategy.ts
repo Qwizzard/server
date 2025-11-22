@@ -1,8 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, VerifyCallback, StrategyOptions } from 'passport-google-oauth20';
+import {
+  Strategy,
+  VerifyCallback,
+  StrategyOptions,
+  Profile,
+} from 'passport-google-oauth20';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user.service';
+
+interface GoogleEmail {
+  value: string;
+  verified: boolean;
+}
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
@@ -19,31 +29,33 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   }
 
   async validate(
-    accessToken: string,
-    refreshToken: string,
-    profile: any,
+    _accessToken: string,
+    _refreshToken: string,
+    profile: Profile,
     done: VerifyCallback,
-  ): Promise<any> {
+  ): Promise<void> {
     try {
       const { id, emails, displayName } = profile;
+      const typedEmails = emails as GoogleEmail[] | undefined;
 
-      if (!emails || emails.length === 0) {
-        return done(new Error('No email found in Google profile'), false);
+      if (!typedEmails || typedEmails.length === 0) {
+        done(new Error('No email found in Google profile'), false);
+        return;
       }
 
-      const email = emails[0].value;
+      const email = typedEmails[0].value;
+      const username = displayName || email.split('@')[0];
 
       // Find or create user with account linking
       const user = await this.userService.findOrCreateGoogleUser({
         googleId: id,
         email,
-        username: displayName || email.split('@')[0],
+        username,
       });
 
       done(null, user);
     } catch (error) {
-      done(error, false);
+      done(error as Error, false);
     }
   }
 }
-

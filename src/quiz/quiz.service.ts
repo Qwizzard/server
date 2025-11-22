@@ -3,8 +3,8 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Model, Connection, Types } from 'mongoose';
 import { Quiz } from '../schemas/quiz.schema';
 import { OpenAIService } from '../openai/openai.service';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
@@ -16,12 +16,28 @@ export class QuizService {
   constructor(
     @InjectModel(Quiz.name) private quizModel: Model<Quiz>,
     private openAIService: OpenAIService,
+    @InjectConnection() private connection: Connection,
   ) {}
 
   async generateQuiz(
     userId: string,
     generateQuizDto: GenerateQuizDto,
   ): Promise<Quiz> {
+    // Strict validation: Verify user exists before creating quiz
+    const db = this.connection.db;
+
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+
+    const userExists = await db
+      .collection('users')
+      .findOne({ _id: new Types.ObjectId(userId) });
+
+    if (!userExists) {
+      throw new ForbiddenException('Invalid user. Cannot create quiz.');
+    }
+
     // Generate questions using OpenAI
     const questions = await this.openAIService.generateQuiz(generateQuizDto);
 
@@ -68,6 +84,13 @@ export class QuizService {
       throw new NotFoundException('Quiz not found');
     }
 
+    // STRICT: Quiz must have a valid creator - no orphaned quizzes allowed
+    if (!quiz.creatorId) {
+      throw new NotFoundException(
+        'Quiz is corrupted (invalid creator). Please contact support.',
+      );
+    }
+
     // Check if user has access
     // If no userId (not logged in), only allow access to public quizzes
     if (!userId) {
@@ -76,24 +99,23 @@ export class QuizService {
       }
     } else {
       // If user is logged in, check if they're creator or quiz is public
-      // Handle case where creatorId might be null (deleted user)
-      if (!quiz.creatorId) {
-        // If creator doesn't exist and quiz is not public, deny access
-        if (!quiz.isPublic) {
-          throw new ForbiddenException('You do not have access to this quiz');
-        }
+      let creatorIdStr: string;
+      if (
+        typeof quiz.creatorId === 'object' &&
+        quiz.creatorId !== null &&
+        '_id' in quiz.creatorId
+      ) {
+        const creatorObj = quiz.creatorId as {
+          _id: { toString: () => string };
+        };
+        creatorIdStr = creatorObj._id.toString();
       } else {
-        // Use type assertion to handle populated vs non-populated creatorId
-        let creatorIdStr: string;
-        if (typeof quiz.creatorId === 'object' && quiz.creatorId !== null && '_id' in quiz.creatorId) {
-          creatorIdStr = (quiz.creatorId as any)._id.toString();
-        } else {
-          creatorIdStr = (quiz.creatorId as any).toString();
-        }
-        
-        if (creatorIdStr !== userId && !quiz.isPublic) {
-          throw new ForbiddenException('You do not have access to this quiz');
-        }
+        const creatorId = quiz.creatorId as { toString: () => string };
+        creatorIdStr = creatorId.toString();
+      }
+
+      if (creatorIdStr !== userId && !quiz.isPublic) {
+        throw new ForbiddenException('You do not have access to this quiz');
       }
     }
 

@@ -50,8 +50,7 @@ export class QuizResult extends Document {
 
 export const QuizResultSchema = SchemaFactory.createForClass(QuizResult);
 
-// Create indexes
-QuizResultSchema.index({ slug: 1 }, { unique: true });
+// Create indexes (not already defined in @Prop decorators)
 QuizResultSchema.index({ userId: 1 });
 QuizResultSchema.index({ quizId: 1 });
 QuizResultSchema.index({ attemptId: 1 });
