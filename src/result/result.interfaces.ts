@@ -41,3 +41,27 @@ export interface ResultResponse {
   answers: DetailedAnswer[];
 }
 
+export interface ResultListItem {
+  _id: unknown;
+  slug: string;
+  userId: unknown;
+  quizId: unknown;
+  quizSlug: string;
+  quizTopic: string;
+  quizDifficulty: string;
+  attemptId: unknown;
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  completedAt: Date;
+  isResultPublic: boolean;
+}
+
+export interface PopulatedQuizBasic {
+  _id: unknown;
+  slug: string;
+  topic: string;
+  difficulty: string;
+  numberOfQuestions?: number;
+}
+

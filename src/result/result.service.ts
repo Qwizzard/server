@@ -9,6 +9,7 @@ import { QuizResult } from '../schemas/quiz-result.schema';
 import {
   PopulatedQuiz,
   ResultResponse,
+  ResultListItem,
   DetailedAnswer,
 } from './result.interfaces';
 
@@ -18,12 +19,48 @@ export class ResultService {
     @InjectModel(QuizResult.name) private resultModel: Model<QuizResult>,
   ) {}
 
-  async getMyResults(userId: string): Promise<QuizResult[]> {
-    return this.resultModel
+  async getMyResults(userId: string): Promise<ResultListItem[]> {
+    const results = await this.resultModel
       .find({ userId })
       .populate('quizId', 'slug topic difficulty numberOfQuestions')
       .sort({ completedAt: -1 })
       .exec();
+
+    // Transform results to include quiz details at the top level
+    // Mongoose populate typing is complex, using type assertion
+    return (results as any[]).map((result: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const quiz = result.quizId;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        _id: result._id,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        slug: result.slug,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        userId: result.userId,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        quizId: quiz._id,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        quizSlug: quiz.slug,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        quizTopic: quiz.topic,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        quizDifficulty: quiz.difficulty,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        attemptId: result.attemptId,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        score: result.score,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        totalQuestions: result.totalQuestions,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        percentage: result.percentage,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        completedAt: result.completedAt,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        isResultPublic: result.isResultPublic,
+      } as ResultListItem;
+    });
   }
 
   async getResultById(
