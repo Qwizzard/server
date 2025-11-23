@@ -6,6 +6,11 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { QuizResult } from '../schemas/quiz-result.schema';
+import {
+  PopulatedQuiz,
+  ResultResponse,
+  DetailedAnswer,
+} from './result.interfaces';
 
 @Injectable()
 export class ResultService {
@@ -16,7 +21,7 @@ export class ResultService {
   async getMyResults(userId: string): Promise<QuizResult[]> {
     return this.resultModel
       .find({ userId })
-      .populate('quizId', 'topic difficulty numberOfQuestions')
+      .populate('quizId', 'slug topic difficulty numberOfQuestions')
       .sort({ completedAt: -1 })
       .exec();
   }
@@ -24,35 +29,12 @@ export class ResultService {
   async getResultById(
     resultSlug: string,
     userId?: string,
-  ): Promise<{
-    _id: unknown;
-    slug: string;
-    userId: unknown;
-    quizId: unknown;
-    quizTopic: string;
-    quizDifficulty: string;
-    attemptId: unknown;
-    score: unknown;
-    totalQuestions: unknown;
-    percentage: unknown;
-    completedAt: unknown;
-    isResultPublic: boolean;
-    answers: Array<{
-      questionIndex: number;
-      questionText: string;
-      questionType: string;
-      options: string[];
-      selectedAnswers: number[];
-      correctAnswers: number[];
-      isCorrect: boolean;
-      explanation: string;
-    }>;
-  }> {
+  ): Promise<ResultResponse> {
     const result = await this.resultModel
       .findOne({ slug: resultSlug })
       .populate({
         path: 'quizId',
-        select: 'topic difficulty numberOfQuestions questions',
+        select: 'slug topic difficulty numberOfQuestions questions',
       })
       .exec();
 
@@ -74,18 +56,10 @@ export class ResultService {
     }
 
     // Include question details in the response
-    const quiz = result.quizId as unknown as {
-      _id: unknown;
-      topic: string;
-      difficulty: string;
-      questions: Array<{
-        questionText: string;
-        questionType: string;
-        options: string[];
-        explanation: string;
-      }>;
-    };
-    const detailedAnswers = result.answers.map((answer) => {
+    // Type assertion needed because Mongoose populate returns ObjectId but we know it's populated
+    const quiz = result.quizId as unknown as PopulatedQuiz;
+
+    const detailedAnswers: DetailedAnswer[] = result.answers.map((answer) => {
       const question = quiz.questions[answer.questionIndex];
       return {
         questionIndex: answer.questionIndex,
@@ -100,18 +74,19 @@ export class ResultService {
     });
 
     return {
-      _id: result._id,
-      slug: result.slug,
-      userId: result.userId,
+      _id: result._id as unknown,
+      slug: result.slug as string,
+      userId: result.userId as unknown,
       quizId: quiz._id,
+      quizSlug: quiz.slug,
       quizTopic: quiz.topic,
       quizDifficulty: quiz.difficulty,
-      attemptId: result.attemptId,
-      score: result.score,
-      totalQuestions: result.totalQuestions,
-      percentage: result.percentage,
-      completedAt: result.completedAt,
-      isResultPublic: result.isResultPublic,
+      attemptId: result.attemptId as unknown,
+      score: result.score as unknown,
+      totalQuestions: result.totalQuestions as unknown,
+      percentage: result.percentage as unknown,
+      completedAt: result.completedAt as unknown,
+      isResultPublic: result.isResultPublic as boolean,
       answers: detailedAnswers,
     };
   }

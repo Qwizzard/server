@@ -5,21 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-
-export interface QuizQuestion {
-  questionText: string;
-  questionType: 'mcq' | 'true-false' | 'multiple-correct';
-  options: string[];
-  correctAnswers: number[];
-  explanation: string;
-}
-
-export interface GenerateQuizParams {
-  topic: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  questionTypes: string[];
-  numberOfQuestions: number;
-}
+import { QuizQuestion, GenerateQuizParams } from './openai.interfaces';
 
 @Injectable()
 export class OpenAIService {

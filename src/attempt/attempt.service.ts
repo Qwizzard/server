@@ -12,6 +12,10 @@ import { Quiz } from '../schemas/quiz.schema';
 import { StartAttemptDto } from './dto/start-attempt.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
 import { generateAttemptId, generateResultId } from '../utils/slug.utils';
+import {
+  AttemptStatusResponse,
+  CalculateScoreResult,
+} from './attempt.interfaces';
 
 @Injectable()
 export class AttemptService {
@@ -76,11 +80,7 @@ export class AttemptService {
   async getQuizAttemptStatus(
     userId: string,
     quizSlug: string,
-  ): Promise<{
-    status: 'not-started' | 'in-progress' | 'completed';
-    attemptId?: string;
-    lastQuestionIndex?: number;
-  }> {
+  ): Promise<AttemptStatusResponse> {
     // Find quiz by slug first
     const quiz = await this.quizModel.findOne({ slug: quizSlug }).exec();
     if (!quiz) {
@@ -99,14 +99,14 @@ export class AttemptService {
 
     if (attempt.status === 'in-progress') {
       // Find the last answered question
-      const lastQuestionIndex =
+      const lastQuestionIndex: number =
         attempt.answers.length > 0
-          ? Math.max(...attempt.answers.map((a) => a.questionIndex))
+          ? Math.max(...attempt.answers.map((a) => Number(a.questionIndex)))
           : -1;
 
       return {
-        status: 'in-progress',
-        attemptId: attempt.slug,
+        status: 'in-progress' as const,
+        attemptId: attempt.slug as string,
         lastQuestionIndex,
       };
     }
@@ -277,22 +277,9 @@ export class AttemptService {
   private calculateScore(
     quiz: Quiz,
     attempt: QuizAttempt,
-  ): {
-    score: number;
-    answers: Array<{
-      questionIndex: number;
-      selectedAnswers: number[];
-      correctAnswers: number[];
-      isCorrect: boolean;
-    }>;
-  } {
+  ): CalculateScoreResult {
     let score = 0;
-    const answers: Array<{
-      questionIndex: number;
-      selectedAnswers: number[];
-      correctAnswers: number[];
-      isCorrect: boolean;
-    }> = [];
+    const answers: CalculateScoreResult['answers'] = [];
 
     for (let i = 0; i < quiz.questions.length; i++) {
       const question = quiz.questions[i];

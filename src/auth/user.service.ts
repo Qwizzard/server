@@ -4,12 +4,7 @@ import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { User, AuthProvider } from '../schemas/user.schema';
 import { RegisterDto } from './dto/register.dto';
-
-interface GoogleUserData {
-  googleId: string;
-  email: string;
-  username: string;
-}
+import { GoogleUserData } from './user.interfaces';
 
 @Injectable()
 export class UserService {

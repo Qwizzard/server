@@ -4,12 +4,7 @@ import { UserService } from './user.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
-
-export interface GoogleUser {
-  _id: { toString: () => string };
-  email: string;
-  username: string;
-}
+import { GoogleUser, AuthResponse, UserProfile } from './auth.interfaces';
 
 @Injectable()
 export class AuthService {
@@ -18,7 +13,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto): Promise<AuthResponse> {
     const user = await this.userService.create(registerDto);
 
     const payload: JwtPayload = {
@@ -30,14 +25,14 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload),
       user: {
-        id: user._id,
+        id: user._id.toString(),
         email: user.email,
         username: user.username,
       },
     };
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto): Promise<AuthResponse> {
     const user = await this.userService.findByEmail(loginDto.email);
 
     if (!user) {
@@ -69,7 +64,7 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload),
       user: {
-        id: user._id,
+        id: user._id.toString(),
         email: user.email,
         username: user.username,
       },
@@ -108,7 +103,7 @@ export class AuthService {
     return null;
   }
 
-  async getProfile(userId: string) {
+  async getProfile(userId: string): Promise<UserProfile> {
     const user = await this.userService.findById(userId);
 
     if (!user) {
@@ -122,10 +117,7 @@ export class AuthService {
     };
   }
 
-  googleLogin(user: GoogleUser): {
-    access_token: string;
-    user: { id: string; email: string; username: string };
-  } {
+  googleLogin(user: GoogleUser): AuthResponse {
     const payload: JwtPayload = {
       sub: user._id.toString(),
       email: user.email,

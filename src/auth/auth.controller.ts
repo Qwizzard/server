@@ -16,7 +16,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import type { Response, Request } from 'express';
-import { AuthService, GoogleUser } from './auth.service';
+import { AuthService } from './auth.service';
+import { GoogleUser } from './auth.interfaces';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
