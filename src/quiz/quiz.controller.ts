@@ -16,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { QuizService } from './quiz.service';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
+import { GenerateAdaptiveQuizDto } from './dto/generate-adaptive-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
@@ -37,6 +38,30 @@ export class QuizController {
     @Body() generateQuizDto: GenerateQuizDto,
   ) {
     return this.quizService.generateQuiz(userId, generateQuizDto);
+  }
+
+  @Post('adaptive')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Generate an adaptive quiz based on a previous result, focusing on weak areas',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Adaptive quiz generated successfully',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Result not found' })
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  async generateAdaptiveQuiz(
+    @CurrentUser('userId') userId: string,
+    @Body() generateAdaptiveQuizDto: GenerateAdaptiveQuizDto,
+  ) {
+    return this.quizService.generateAdaptiveQuiz(
+      userId,
+      generateAdaptiveQuizDto,
+    );
   }
 
   @Get('my-quizzes')
@@ -118,5 +143,48 @@ export class QuizController {
     @CurrentUser('userId') userId: string,
   ) {
     return this.quizService.toggleVisibility(quizId, userId);
+  }
+
+  @Get(':id/has-completed')
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({
+    summary:
+      'Check if the current user has completed the quiz at least once',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Completion status retrieved successfully',
+  })
+  async hasCompletedQuiz(
+    @Param('id') quizId: string,
+    @CurrentUser('userId') userId?: string,
+  ) {
+    if (!userId) {
+      return { hasCompleted: false };
+    }
+    const hasCompleted = await this.quizService.hasUserCompletedQuiz(
+      quizId,
+      userId,
+    );
+    return { hasCompleted };
+  }
+
+  @Get(':id/adaptive-children')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get all adaptive quizzes derived from a parent quiz',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Adaptive quizzes retrieved successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Parent quiz not found' })
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  async getAdaptiveChildren(
+    @Param('id') quizId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.quizService.getAdaptiveQuizzesForParent(quizId, userId);
   }
 }

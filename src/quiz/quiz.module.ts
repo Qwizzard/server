@@ -3,11 +3,15 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { QuizController } from './quiz.controller';
 import { QuizService } from './quiz.service';
 import { Quiz, QuizSchema } from '../schemas/quiz.schema';
+import { QuizResult, QuizResultSchema } from '../schemas/quiz-result.schema';
 import { OpenAIModule } from '../openai/openai.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Quiz.name, schema: QuizSchema }]),
+    MongooseModule.forFeature([
+      { name: Quiz.name, schema: QuizSchema },
+      { name: QuizResult.name, schema: QuizResultSchema },
+    ]),
     OpenAIModule,
   ],
   controllers: [QuizController],

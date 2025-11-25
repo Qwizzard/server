@@ -32,7 +32,7 @@ async function bootstrap() {
 
   // Swagger configuration
   const config = new DocumentBuilder()
-    .setTitle('Quiz-Me API')
+    .setTitle('Qwizzard API')
     .setDescription('AI-powered quiz generation and management API')
     .setVersion('1.0')
     .addBearerAuth()

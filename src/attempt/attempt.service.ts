@@ -42,6 +42,17 @@ export class AttemptService {
       throw new ForbiddenException('You do not have access to this quiz');
     }
 
+    // Prevent retaking adaptive quizzes
+    if (quiz.parentQuizId) {
+      const existingResult = await this.resultModel
+        .findOne({ userId, quizId: quiz._id })
+        .exec();
+      
+      if (existingResult) {
+        throw new BadRequestException('Adaptive quizzes cannot be retaken');
+      }
+    }
+
     // Check for existing in-progress attempt (using quiz._id for internal reference)
     const existingAttempt = await this.attemptModel
       .findOne({ userId, quizId: quiz._id, status: 'in-progress' })

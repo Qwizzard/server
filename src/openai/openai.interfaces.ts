@@ -13,3 +13,22 @@ export interface GenerateQuizParams {
   numberOfQuestions: number;
 }
 
+export interface WrongAnswer {
+  questionText: string;
+  questionType: string;
+  selectedAnswers: number[];
+  correctAnswers: number[];
+  explanation: string;
+  options: string[];
+}
+
+export interface GenerateAdaptiveQuizParams {
+  originalTopic: string;
+  originalDifficulty: 'easy' | 'medium' | 'hard';
+  questionTypes: string[];
+  numberOfQuestions: number;
+  wrongAnswers: WrongAnswer[];
+  focusOnWeakAreas: boolean;
+  useHarderDifficulty: boolean;
+}
+

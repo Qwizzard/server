@@ -169,4 +169,65 @@ export class ResultService {
 
     return result;
   }
+
+  async getGroupedResults(userId: string): Promise<any[]> {
+    // Get all quizzes owned by the user (excluding adaptive quizzes)
+    const quizzes = await this.resultModel.db
+      .collection('quizzes')
+      .find({
+        creatorId: userId,
+        parentQuizId: { $exists: false },
+      })
+      .toArray();
+
+    const groupedResults: any[] = [];
+
+    for (const quiz of quizzes) {
+      // Get all results for this original quiz
+      const originalResults = await this.resultModel
+        .find({ quizId: quiz._id, userId })
+        .sort({ completedAt: -1 })
+        .exec();
+
+      // Get all adaptive quizzes for this original quiz
+      const adaptiveQuizzes = await this.resultModel.db
+        .collection('quizzes')
+        .find({
+          parentQuizId: quiz._id,
+          creatorId: userId,
+        })
+        .toArray();
+
+      const adaptiveGroups: any[] = [];
+
+      for (const adaptiveQuiz of adaptiveQuizzes) {
+        // Get results for each adaptive quiz
+        const adaptiveResults = await this.resultModel
+          .find({ quizId: adaptiveQuiz._id, userId })
+          .sort({ completedAt: -1 })
+          .exec();
+
+        if (adaptiveResults.length > 0) {
+          adaptiveGroups.push({
+            quiz: adaptiveQuiz,
+            results: adaptiveResults,
+          });
+        }
+      }
+
+      // Only include quizzes that have been attempted
+      if (originalResults.length > 0 || adaptiveGroups.length > 0) {
+        groupedResults.push({
+          quizId: quiz._id,
+          quizSlug: quiz.slug,
+          quizTopic: quiz.topic,
+          quizDifficulty: quiz.difficulty,
+          originalResults,
+          adaptiveGroups,
+        });
+      }
+    }
+
+    return groupedResults;
+  }
 }

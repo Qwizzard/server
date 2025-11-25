@@ -24,6 +24,15 @@ export class ResultController {
     return this.resultService.getMyResults(userId);
   }
 
+  @Get('grouped')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get grouped results with adaptive quizzes nested' })
+  @ApiResponse({ status: 200, description: 'Grouped results retrieved successfully' })
+  async getGroupedResults(@CurrentUser('userId') userId: string) {
+    return this.resultService.getGroupedResults(userId);
+  }
+
   @Get(':resultId')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({

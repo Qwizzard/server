@@ -22,4 +22,9 @@ export default () => ({
   frontend: {
     url: process.env.FRONTEND_URL || 'http://localhost:3000',
   },
+  analytics: {
+    enabled: process.env.POSTHOG_ENABLED === 'true',
+    posthogApiKey: process.env.POSTHOG_API_KEY,
+    posthogHost: process.env.POSTHOG_HOST || 'https://app.posthog.com',
+  },
 });

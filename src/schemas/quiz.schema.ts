@@ -47,6 +47,25 @@ export class Quiz extends Document {
 
   @Prop({ default: false })
   isPublic: boolean;
+
+  @Prop({ type: Types.ObjectId, ref: 'Quiz' })
+  parentQuizId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'QuizResult' })
+  sourceResultId?: Types.ObjectId;
+
+  @Prop({
+    type: String,
+    enum: ['manual', 'adaptive-weak', 'adaptive-same', 'adaptive-harder'],
+    default: 'manual',
+  })
+  generationType: string;
+
+  @Prop({ type: [String] })
+  weakTopicsFocus?: string[];
+
+  @Prop({ type: String, enum: ['openai', 'question-bank'] })
+  questionSource?: string;
 }
 
 export const QuizSchema = SchemaFactory.createForClass(Quiz);
